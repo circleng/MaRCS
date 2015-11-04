@@ -1,0 +1,35 @@
+import java.util.Random;
+
+
+public class Person {
+	double lieRate;
+	
+	Person(){
+		lieRate = 0.5;
+	}
+	
+	boolean isLie(){
+		Random rand = new Random();
+		if(rand.nextDouble() >= lieRate)
+			return true;
+		else
+			return false;
+	}
+}
+
+
+-------
+
+
+
+public class People {
+	Person[] persons;
+	
+	People(int n){
+		for(int i = 0 ; i < n ; i++){
+			persons = new Person[n];
+			persons[i] = new Person();
+		}
+	}
+
+}
