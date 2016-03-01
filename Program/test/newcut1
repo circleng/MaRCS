@@ -1,0 +1,7 @@
+"BehaviorSpace results (NetLogo 5.2.0)"
+"marcs.nlogo"
+"newcut1"
+"02/22/2559 01:36:33:644 +0700"
+"min-pxcor","max-pxcor","min-pycor","max-pycor"
+"-20","20","-20","20"
+"[run number]","round-cut","cut-workers-per-round","workers-probability","label-level","problem-label","number-workers","reputation-algorithm","show-penalty?","adversaries-type","use-cut-worker-by-penalty?","adversaries-rate","area.x","data-fusion","area.y","[step]","sum-correctness / floor(ticks / update-ticks)"

@@ -1,6 +1,6 @@
 library(ggplot2)
 
-#1 number worker test
+#1 number worker testse
 test1 <- function(){
   result.df1 <<- onevar.df("test1.csv")
   xplot(result.df1)
@@ -20,7 +20,26 @@ test2.1 <- function(){
 #3 worker probability test (em)(normal)
 test3 <- function(){
   result.df3 <<- onevar.df("test3.csv")
+  result.df3 <<- enlarge(result.df3)
+  
   xplot(result.df3)
+}
+
+enlarge <- function(df){
+  row <- nrow(df)
+  for(i in 1:(row - 1)){
+    start <- df[i,1]
+    end <- df[i+1,1] 
+    
+    size <- (end-start)
+    value <- seq(df[i,2], df[i+1,2], length.out = size + 1)
+    
+    for(ii in 2:size){
+      df <- rbind(df, c(start + ii - 1,value[ii]))
+    }
+  }
+  df <- df[with(df, order(df[,1])), ]
+  df
 }
 
 #4 worker probability test (mv)(random)
@@ -46,6 +65,44 @@ test5 <- function(){
   plot <- x2plot(result.df5)
   plot + ggtitle("Performance of Majority Voting with Soft Penalty")
 }
+
+test5soft <- function(){
+  result.df5soft <<- onevar.df("test5soft.csv")
+  
+  result.df5soft <<- aggregate(correctness ~ .,data = result.df5soft, mean)
+  
+  plot <- xplot(result.df5soft)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+test5hard <- function(){
+  result.df5hard <<- onevar.df("test5hard.csv")
+
+  result.df5hard <<- aggregate(correctness ~ .,data = result.df5hard, mean)
+  
+  plot <- xplot(result.df5hard)
+  plot + ggtitle("Performance of Majority Voting with Hard Penalty")
+}
+
+test6soft <- function(){
+  result.df6soft <<- onevar.df("test6soft.csv")
+  
+  result.df6soft <<- aggregate(correctness ~ .,data = result.df6soft, mean)
+  
+  plot <- xplot(result.df6soft)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+test6hard <- function(){
+  result.df6hard <<- onevar.df("test6hard.csv")
+  
+  result.df6hard <<- aggregate(correctness ~ .,data = result.df6hard, mean)
+  
+  plot <- xplot(result.df6hard)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+
 
 #6 worker probability test (em)(soft)(normal)
 test6 <- function(){
@@ -299,6 +356,15 @@ s1 <- function(){
   plot + ggtitle("Performance between Majority Voting and EM Algorithm with Normal Workers")
 }
 
+s1diff <- function(){
+  result <- rep(0,100)
+  result[30:70] <- result.df3[,2] - result.df2[30:70,2]
+  qplot(x = 1:100, y = result, geom = "blank") + geom_point(colour = "grey") + 
+    geom_smooth(se = FALSE, span = 0.2, size = 1.2, colour = "#061954") + 
+   theme_bw() + xlab("Workers Probability") + ylab("Different Correctness") +
+    ggtitle("Different Correctness of EM Algorithm and Majority Voting")
+}
+
 #s2 MV vs EM type 3 (no penalty)
 s2 <- function(){
   plot <- nlineplot(list(result.df7[result.df7$workers.probability == 50,],
@@ -308,6 +374,15 @@ s2 <- function(){
                  list("MV worker-prob 50%","MV worker-prob 100%","EM worker-prob 50%","EM worker-prob 100%"),"Data.Fusion")
   plot + scale_colour_manual(values = c("#f9007c", "#ffa2d0", "#0ca3ff", "#86d1ff")) +
      ggtitle("Performance between Majority Voting and EM Algorithm with Adversaries Type 3")
+}
+
+s2diff <- function(){
+  result <- rep(0,100)
+  result <- result.df7[102:202,3] - result.df10[12:22,3]
+  qplot(x = 1:100, y = result, geom = "blank") + geom_point(colour = "grey") + 
+    geom_smooth(se = FALSE, span = 0.2, size = 1.2, colour = "#061954") + 
+    theme_bw() + xlab("Workers Probability") + ylab("Different Correctness") +
+    ggtitle("Different Correctness of EM Algorithm and Majority Voting")
 }
 
 #s3 MV vs EM type 2 (no penalty)
@@ -332,6 +407,40 @@ s4 <- function(){
   
   plot + scale_colour_manual(values = c("#f9007c", "#ffa2d0", "#0ca3ff", "#86d1ff"))  +
     ggtitle("Performance between Majority Voting and EM Algorithm with Adversaries Type 1")  
+}
+
+#ss1 MV vs vs MV Soft vs MV Hard normal (no penalty)
+ss1 <- function(){
+  plot <- nlineplot(list(result.df2, result.df5hard, result.df5soft),list("MV","MV Hard","MV Soft"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting and Hard Soft with Normal Workers")
+}
+
+ss1diff <- function(){
+  df <- data.frame()
+  
+  result <- rep(0,100)
+  result <- result.df2[,2] - result.df5soft[,2]
+  df <- rbind(df,setNames(data.frame(0:100, result, rep("MV Soft",101)),names(df)) )
+  
+  result <- rep(0,100)
+  result <- result.df2[,2] - result.df5hard[,2]
+  df <- rbind(df,setNames(data.frame(0:100, result, rep("MV Hard",101)),names(df)) )
+  
+  result <- rep(0,100)
+  result <- result.df2[,2] - result.df6soft[,2]
+  df <- rbind(df,setNames(data.frame(0:100, result, rep("EM Soft",101)),names(df)) )
+  
+  result <- rep(0,100)
+  result <- result.df2[,2] - result.df6hard[,2]
+  df <- rbind(df,setNames(data.frame(0:100, result, rep("EM Hard",101)),names(df)) )
+  
+  colnames(df) <- c("worker.prob","correctness","set")
+  
+  
+  ggplot(data = df, aes(x = df[,1], y = df[,2], colour = set)) + geom_point(size = 0.3) + 
+    stat_smooth(se = FALSE, span = 0.3, size = 1.2, aes(fill = set)) + 
+    theme_bw() + xlab("Workers Probability") + ylab("Different Correctness") +
+    ggtitle("Different Correctness of Majority Voting with Reputation Algorithm")
 }
 
 onevar.df <- function(file){
@@ -418,4 +527,20 @@ diffchange2 <- function(df){
   diff$change <- round(diff$correctness - diff$correctness[1], 5)
   
   View(diff)
+}
+
+cutcheck <- function(){
+  cut <- onevar.df("newcut0.csv")
+  ggplot(cut, aes(x = cut[,1], y = cut[,2])) + geom_smooth(se = FALSE, colour="black") + 
+    theme_bw() + xlab("Percent of cut workers") + ylab("Correctness") +
+    geom_abline(intercept = cut[1,2], slope = 0, colour = "green", size = 1.2) +
+    scale_x_discrete(breaks = 1:20) + ggtitle("Correctness by Percent of Cut Workers")
+}
+
+cut1check <- function(){
+  cut <- onevar.df("newcut1.csv")
+  ggplot(cut, aes(x = cut[,1], y = cut[,2])) + geom_smooth(se = FALSE, colour="black") + 
+    theme_bw() + xlab("Percent of cut workers") + ylab("Correctness") +
+    geom_abline(intercept = cut[1,2], slope = 0, colour = "green", size = 1.2) +
+    scale_x_discrete(breaks = 1:20) + ggtitle("Correctness by Percent of Cut Workers")
 }
