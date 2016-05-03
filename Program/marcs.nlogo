@@ -4,7 +4,7 @@ breed[workers worker]
 breed[problems problem]
 breed[datacenters datacenter]
 
-workers-own[answer workers-type penalty delay-tick recent-road]
+workers-own[answer workers-type penalty penalty-all delay-tick recent-road]
 patches-own[true-label road-num]
 datacenters-own[list-answer list-workers generate-label each-correctness]
 
@@ -20,6 +20,8 @@ globals
   area
   em-list
   hard-list
+  round-cut
+  round-cut-type 
 ]
 
 to setup
@@ -34,6 +36,8 @@ to setup
   set flood-ticks 30
   set plus-delay-tick 30
   set area list (area.x)(area.y)
+  set round-cut 1
+  set round-cut-type 2
 
 
   setup-patches
@@ -141,7 +145,7 @@ to setup-flood
       [
         if road-num = i
         [
-          ifelse rand < 20
+          ifelse rand < 50
            [set true-label 0]
            [set true-label 1]
 
@@ -218,6 +222,7 @@ to generate-workers[number w-type]
      [set-adversaries]
 
     set penalty 0
+    set penalty-all []
   ]
 end
 
@@ -337,9 +342,14 @@ end
 to datacenter-fusion
    save-hard
    
-   let round-cut 15
-   if use-cut-worker-by-penalty? and floor(ticks / update-ticks) >= round-cut
-   [cut-list]
+   ifelse round-cut-type = 1[
+    if use-cut-worker-by-penalty? and floor(ticks / update-ticks) >= round-cut 
+      [cut-list]
+   ]
+   [
+     if use-cut-worker-by-penalty? and floor(ticks / update-ticks) mod round-cut = 0
+      [cut-list]
+   ]
 
   if data-fusion = "Majority Voting"
    [mv]
@@ -632,15 +642,18 @@ to soft-penalty
         ask worker item ? list-workers[
           if item ? l-answer = 1
           [
-            if round-penalty-zero > 1
-            [set penalty penalty + 1 / round-penalty-one]
+            if round-penalty-zero >= 1
+            [ set penalty-all lput (1 / round-penalty-one) penalty-all
+              set penalty mean penalty-all
+            ]
           ]
           if item ? l-answer = 0
           [
-            if round-penalty-one > 1
-            [set penalty penalty + 1 / round-penalty-zero]
+            if round-penalty-one >= 1
+            [ set penalty-all lput (1 / round-penalty-zero) penalty-all
+              set penalty mean penalty-all
+            ]
           ]
-
         ]
      ]
    ]
@@ -701,6 +714,7 @@ to cut-list
   ]
 
    let index-workers-cut sublist order(list-penalty) 0 (round(cut-workers-per-round / 100 * number-workers))
+   
    foreach index-workers-cut [
      ask datacenters[
        let index position (? + count datacenters + 1) list-workers
@@ -730,7 +744,7 @@ to-report seq [x y length.out]
 end
 
 to-report order [x]
-  report sort-by [item ?1 x > item ?2 x] n-values length x[?]
+  report sort-by [item ?1 x > item ?2 x] shuffle n-values length x[?]
 end
 
 to-report split [ string delim ]
@@ -740,7 +754,6 @@ to-report split [ string delim ]
       [ lput word last ?1 ?2 but-last ?1 ]
   ] fput [""] n-values (length string) [ substring string ? (? + 1) ]
 end
-
 
 to setup-log
   output-print "--Setup--"
@@ -816,8 +829,8 @@ SLIDER
 number-workers
 number-workers
 1
+10000
 100
-14
 1
 1
 NIL
@@ -840,9 +853,9 @@ SLIDER
 192
 workers-probability
 workers-probability
-0
-100
 50
+100
+100
 1
 1
 %
@@ -879,7 +892,7 @@ adversaries-rate
 adversaries-rate
 0
 100
-10
+100
 1
 1
 %
@@ -893,7 +906,7 @@ CHOOSER
 adversaries-type
 adversaries-type
 "1. fixed : flood" "1. fixed : normal" "2. random" "3. perfect"
-3
+0
 
 PLOT
 858
@@ -982,7 +995,7 @@ area.x
 area.x
 1
 max-pxcor
-6
+5
 1
 1
 NIL
@@ -1013,7 +1026,7 @@ CHOOSER
 data-fusion
 data-fusion
 "Majority Voting" "EM Algorithm"
-1
+0
 
 TEXTBOX
 119
@@ -1033,7 +1046,7 @@ CHOOSER
 reputation-algorithm
 reputation-algorithm
 "None" "Simple Penalty" "Soft Penalty" "Hard Penalty"
-3
+2
 
 MONITOR
 219
@@ -1076,7 +1089,7 @@ cut-workers-per-round
 cut-workers-per-round
 0
 50
-3
+10
 1
 1
 %
@@ -1091,7 +1104,7 @@ area.y
 area.y
 1
 max-pycor
-6
+5
 1
 1
 NIL
@@ -1566,16 +1579,16 @@ NetLogo 5.2.0
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="test2" repetitions="10" runMetricsEveryStep="false">
+  <experiment name="tests" repetitions="10" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <metric>sum-correctness / floor(ticks / update-ticks)</metric>
-    <steppedValueSet variable="workers-probability" first="0" step="1" last="100"/>
-    <enumeratedValueSet variable="number-workers">
+    <steppedValueSet variable="adversaries-rate" first="0" step="10" last="100"/>
+    <enumeratedValueSet variable="workers-probability">
       <value value="100"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="adversaries-rate">
-      <value value="0"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="adversaries-type">
       <value value="&quot;3. perfect&quot;"/>
@@ -2370,6 +2383,1318 @@ NetLogo 5.2.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="cut-workers-per-round">
       <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="tests2" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="10" last="100"/>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="tests3" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="10" last="100"/>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="testa3" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="40" step="1" last="60"/>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="testa2" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="40" step="1" last="60"/>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="testa" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="40" step="1" last="60"/>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="result1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="10" last="100"/>
+    <enumeratedValueSet variable="round-cut">
+      <value value="1"/>
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="round-cut-type">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="80"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="result3" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="result2" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="area.x" first="1" step="1" last="10"/>
+    <steppedValueSet variable="area.y" first="1" step="1" last="10"/>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="result4" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="10" last="100"/>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="result5" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="10" last="100"/>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a0" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="workers-probability" first="50" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a2" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a3" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;1. fixed : flood&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a3.1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;1. fixed : flood&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a4" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="60"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a5" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="50" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a2.1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a3.2" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;1. fixed : flood&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;flood&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a6" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="40" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;1. fixed : flood&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="a7" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="workers-probability" first="50" step="1" last="70"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b0" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="workers-probability" first="50" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="c0" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="workers-probability" first="50" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="11"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="11"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b4" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="60"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b5" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="50" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b1" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b0s" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="workers-probability" first="50" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-rate">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b1s" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;3. perfect&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b2" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;None&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b2s" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;2. random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;normal&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-penalty?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="b3s" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>sum-correctness / floor(ticks / update-ticks)</metric>
+    <steppedValueSet variable="adversaries-rate" first="0" step="1" last="100"/>
+    <enumeratedValueSet variable="number-workers">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="workers-probability">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="adversaries-type">
+      <value value="&quot;1. fixed : flood&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="problem-label">
+      <value value="&quot;random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.x">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="area.y">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="label-level">
+      <value value="&quot;2 Levels&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="data-fusion">
+      <value value="&quot;Majority Voting&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="reputation-algorithm">
+      <value value="&quot;Soft Penalty&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-cut-worker-by-penalty?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cut-workers-per-round">
+      <value value="10"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="show-penalty?">
       <value value="false"/>

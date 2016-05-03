@@ -12,6 +12,24 @@ test2 <- function(){
   xplot(result.df2)
 }
 
+tests <- function(){
+  result.dfs <<- onevar.df("tests.csv")
+  result.dfs2 <<- onevar.df("tests2.csv")
+  result.dfs3 <<- onevar.df("tests3.csv")
+  
+  plot <- nlineplot(list(result.dfs, result.dfs2, result.dfs3),list("MV","MV Soft","MV Soft + Cut"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting")
+}
+
+testa <- function(){
+  result.dfa <<- onevar.df("testa.csv")
+  result.dfa2 <<- onevar.df("testa2.csv")
+  result.dfa3 <<- onevar.df("testa3.csv")
+  
+  plot <- nlineplot(list(result.dfa, result.dfa3),list("MV","MV Soft + Cut"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting")
+}
+
 test2.1 <- function(){
   result.df2.1 <<- onevar.df("test2.1.csv")
   xplot(result.df2.1)
@@ -444,7 +462,7 @@ ss1diff <- function(){
 }
 
 onevar.df <- function(file){
-  df <- read.csv(paste("test",file,sep = "/"), skip = 6)
+  df <- read.csv(paste("result",file,sep = "/"), skip = 6)
   df <- df[, c(2,length(df))]
   colnames(df)[2] <- "correctness" 
   
@@ -453,7 +471,7 @@ onevar.df <- function(file){
 }
 
 twovar.df <- function(file){
-  df <- read.csv(paste("test",file,sep = "/"), skip = 6)
+  df <- read.csv(paste("result",file,sep = "/"), skip = 6)
   df <- df[, c(2:3,length(df))]
   colnames(df)[3] <- "correctness" 
   df <- aggregate(correctness ~ .,data = df, mean)
@@ -472,7 +490,7 @@ twovar2.df <- function(file,file2){
 }
 
 threevar.df <- function(file){
-  df <- read.csv(paste("test",file,sep = "/"), skip = 6)
+  df <- read.csv(paste("result",file,sep = "/"), skip = 6)
   df <- df[, c(2:4,length(df))]
   colnames(df)[4] <- "correctness" 
   df <- aggregate(correctness ~ .,data = df, mean)
@@ -491,19 +509,20 @@ x2plot <- function(df){
     geom_line(size=1.2) + ylim(0,100)
 }
 
-nlineplot <- function(list.df,list.name,legend.name = "set", title = "Plot"){
+nlineplot <- function(list.df,list.name,legend.name = "set", title = "Plot", xmin = 0, xmax = 100, ymin = 0, ymax = 100){
   df <- do.call(rbind, list.df)
-  
+
   temp <- c()
-  for(i in 1:length(list.df)){
-    temp <- c(temp, rep(list.name[[i]], nrow(list.df[[i]])))
+  cut <- length(list.name) /  length(list.df)
+  for(i in 1:length(list.name)){
+    temp <- c(temp, rep(list.name[[i]] , nrow(list.df[[ceiling(i / cut)]]) / cut))
   }
   
   df[,legend.name] <- temp
 
   ggplot(data = df, aes_string(x = colnames(df)[1], y = "correctness",group = legend.name, color = legend.name)) + 
-    geom_line(size=1.2) +
-    ggtitle(title) + ylim(0,100)
+    geom_line(size=1.2, linetype = 1) +
+    ggtitle(title) + ylim(ymin,ymax) + xlim(xmin,xmax)
 }
 
 diffchange <- function(df){
@@ -544,3 +563,501 @@ cut1check <- function(){
     geom_abline(intercept = cut[1,2], slope = 0, colour = "green", size = 1.2) +
     scale_x_discrete(breaks = 1:20) + ggtitle("Correctness by Percent of Cut Workers")
 }
+
+#17/3/59
+#result1 : cut workers every 30,90 ticks [soft penalty]
+result1 <- function(){
+  result <- twovar.df("result1.csv")
+
+  result <<- aggregate(correctness ~ .,data = result, mean)
+  result$round.cut <- factor(result$round.cut)
+  
+  plot <- x2plot(result)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+#result2 : test area 100 soft - no
+result2 <- function(){
+  result <- twovar.df("result2.csv")
+  
+  result <<- aggregate(correctness ~ .,data = result, mean)
+  
+  plot <- x2plot(result)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+#result3 : test area 100 soft - no
+result3 <- function(){
+  result <- onevar.df("result3.csv")
+  
+  plot <- xplot(result)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+#result4 : test set soft-no 100
+result4 <- function(){
+  result <- twovar.df("result4.csv")
+  
+  result <<- aggregate(correctness ~ .,data = result, mean)
+  
+  plot <- x2plot(result)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+#result5 : test set soft-no 1
+result5 <- function(){
+  result <- twovar.df("result5.csv")
+  
+  result <<- aggregate(correctness ~ .,data = result, mean)
+  
+  plot <- x2plot(result)
+  plot + ggtitle("Performance of Majority Voting with Soft Penalty")
+}
+
+a <- function(var){
+  result <<- onevar.df(paste0("a",var,".csv"))
+  xplot(result)
+}
+
+A <- function(vec){
+  param <- paste0("a",vec,".csv")
+  result <- lapply(param, onevar.df)
+  
+  result[[1]] <- result[[1]]
+  
+  plot <- nlineplot(result,list("MV","MV Soft"),"Data.Fusion", xmin = 40, xmax = 60)
+  plot + ggtitle("Performance between Majority Voting")
+}
+
+b <- function(var){
+  result <<- onevar.df(paste0("b",var,".csv"))
+  xplot(result)
+}
+
+all <- function(vec){
+  param <- paste0(vec,".csv")
+  result <- lapply(param, onevar.df)
+
+  plot <- nlineplot(result,list("MV","MV Soft"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting")
+}
+
+mv <- function(){
+  vec <- c("dummy100","mv11", "mv12","mv2","mv3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting") + theme_bw()
+}
+
+mvfix <- function(){
+  vec <- c("dummy100","a3", "a3.2","a2","a1")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting")
+}
+
+mvsoft <- function(){
+  vec <- c("dummy100","mvhard11", "mvhard12","mvhard2","mvhard3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")
+}
+
+mvhard <- function(){
+  vec <- c("dummy100","mvhard11", "mvhard12","mvhard2","mvhard3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting and Hard Penalty")
+}
+
+em <- function(type = 0){
+  vec <- c("dummy100","em11", "em12","em2","em3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between EM Algorithm")
+  
+}
+
+emfix <- function(){
+  vec <- c("dummy100","emfix11", "emfix12","emfix2","emfix3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between EM Algorithm ")
+}
+
+emsoft <- function(type = 0){
+  vec <- c("dummy100","emsoft11", "emsoft12","emsoft2","emsoft3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between EM Algorithm") + theme_bw()
+  
+}
+
+emhard <- function(type = 0){
+  vec <- c("dummy100","emsoft11", "emsoft12","emsoft2","emsoft3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between EM Algorithm and Hard Penalty")
+  
+}
+
+mvsoftcut <- function(){
+  vec <- c("dummy100","mvsoft11cut","mvsoft12cut","mvsoft2cut","mvsoft3cut")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("No Adversaries","Type 1 Flood","Type 1 Normal","Type 2","Type 3"),"Data.Fusion")
+  plot + ggtitle("Performance between Majority Voting and Hard Penalty")
+}
+
+mvsoftratio <- function(){
+  vec <- c("mvsoft2ratio")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("Type 3 Flood"),"Data.Fusion", ymax = 1)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")
+}
+
+mvsoftrp <- function(){
+  vec <- c("mvsoft3precision","mvsoft3recall")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("Precision","Recall"),"Data.Fusion",ymax = 1)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")  + 
+    geom_vline(xintercept = 15, colour="black", linetype = "longdash") +
+    geom_label(aes(x=15, label="number of cut workers", y= 1), colour="black", vjust= -0.3) +
+    theme_bw() + scale_x_continuous(breaks = seq(5,45,5), limits= c(xmin = 5,xmax = 45)) +
+    labs(y = "precision & recall")
+  
+}
+
+mv3dday1 <- function(){
+  vec <- c("mv3dday1","mvsoft3dday1","mvhard3dday1","emsoft3dday1","emhard3dday1")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  diff.result <<- lapply(result[-1], function(r){
+    data.frame(max.count.send = r[,1], correctness = r[,2] - result[[1]][,2])
+  })
+  
+  plot <- nlineplot(diff.result,list("MV Soft","MV Hard","EM Soft","EM Hard"),"Data.Fusion.with.Reputation.Management",ymin = -5, ymax = 5)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty") +
+    theme_bw() + scale_x_continuous(breaks = seq(2,16,2), limits= c(xmin = 2,xmax = 16)) +
+    geom_hline(aes(yintercept = 0), colour="black", linetype = "longdash") +
+    geom_label(aes(y=0, label="data fusion only",x = 4), colour="black", vjust= -0.3)
+
+}
+
+mv3dday2 <- function(){
+  vec <- c("mvsoft3dday2","mvhard3dday2")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot1 <<- nlineplot(result,list("Soft Penalty","Hard Penalty"),"Reputation.Management",ymin = 0.5,ymax = 1)  + 
+    ggtitle("Precision between Majority Voting and Soft Penalty \nwith Adversial Workers Type 3")  + 
+    theme_bw() + scale_x_continuous(breaks = seq(15,40,5), limits= c(xmin = 15,xmax = 40)) +
+    labs(y = "precision")
+  
+  
+  vec <- c("mvsoft2dday2","mvhard2dday2")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot2 <<- nlineplot(result,list("Soft Penalty","Hard Penalty"),"Reputation.Management",ymax = 1)  + 
+    ggtitle("Precision between Majority Voting and Soft Penalty \nwith Adversial Workers Type 2")  + 
+    theme_bw() + scale_x_continuous(breaks = seq(15,40,5), limits= c(xmin = 15,xmax = 40)) +
+    labs(y = "precision")
+  
+  vec <- c("mvsoft11dday","mvhard11dday2")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot3 <<- nlineplot(result,list("Soft Penalty","Hard Penalty"),"Reputation.Management",ymax = 1)  + 
+    ggtitle("Precision between Majority Voting and Soft Penalty \nwith Adversial Workers Type 1")  + 
+    theme_bw() + scale_x_continuous(breaks = seq(15,40,5), limits= c(xmin = 15,xmax = 40)) +
+    labs(y = "precision")
+  
+  multiplot(plot1,plot2,plot3, cols = 1)
+}
+
+mv3dday3 <- function(){
+  vec <- c("mv3dday3","mvsoft3dday3")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("No","Soft","Hard"),"Data.Fusion",xmin = 1,xmax = 10)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty") +
+    theme_bw() + scale_x_continuous(breaks = seq(2,10,2), limits= c(xmin = 2,xmax = 12))
+
+}
+
+
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = ceiling(numPlots/cols), nrow = cols)
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+getMain <- function(name){
+  vec <- c(mv = "Majority Voting",
+           em = "EM Algoritm",
+           mvsoft = "Majority Voting and Soft Penalty",
+           mvhard = "Majority Voting and Hard Penalty",
+           emsoft = "EM Algoritm and Soft Penalty",
+           emhard = "EM Algoritm and Hard Penalty")
+  vec[name]
+}
+
+precision <- function(name){
+  vec <- paste0(name,c("3precision","2precision","11precision","12precision"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle(paste("Performance between",getMain(name)))  + 
+    geom_vline(xintercept = 15, colour="black", linetype = "longdash") +
+    geom_label(aes(x=15, label="number of cut workers", y= 1), colour="black", vjust= -0.3) +
+    theme_bw() + scale_x_continuous(breaks = seq(5,50,5), limits= c(xmin = 5,xmax = 40)) +
+    labs(y = "precision")
+  
+}
+
+recall <- function(name){
+  vec <- paste0(name,c("3recall","2recall","11recall","12recall"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle(paste("Performance between",getMain(name))) + 
+    geom_vline(xintercept = 15, colour="black", linetype = "longdash") +
+    geom_label(aes(x=15, label="number of cut workers", y= 1), colour="black", vjust= -0.3) +
+    theme_bw() + scale_x_continuous(breaks = seq(5,100,5), limits= c(xmin = 5,xmax = 40)) +
+    labs(y = "recall")
+  
+}
+
+prestartcut <- function(name){
+  vec <- paste0(name,c("3prestartcut","2prestartcut","11prestartcut","12prestartcut"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle(paste("Performance between",getMain(name))) + 
+    theme_bw() + scale_x_continuous(breaks = 1:33, limits= c(xmin = 1,xmax = 33))+
+    labs(y = "precision")
+  
+}
+
+restartcut <- function(name){
+  vec <- paste0(name,c("3restartcut","2restartcut","11restartcut","12restartcut"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+   plot + ggtitle(paste("Performance between",getMain(name))) + 
+  theme_bw() + scale_x_continuous(breaks = 1:33, limits= c(xmin = 1,xmax = 33))+
+  labs(y = "recall")
+  
+}
+
+mvsoftrestartcut <- function(){
+  vec <- c("mvsoft3restartcut","mvsoft2restartcut","mvsoft11restartcut","mvsoft12restartcut")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")  + 
+  theme_bw() + scale_x_continuous(breaks = 1:33, limits= c(xmin = 1,xmax = 33))
+}
+
+mvsoftprestartcut <- function(){
+  vec <- c("mvsoft3prestartcut","mvsoft2prestartcut","mvsoft11prestartcut","mvsoft12prestartcut")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")  + 
+    theme_bw() + scale_x_continuous(breaks = 1:33, limits= c(xmin = 1,xmax = 33))
+  
+}
+
+mvhardrestartcut <- function(){
+  vec <- c("mvhard3restartcut","mvhard2restartcut","mvhard11restartcut","mvhard12restartcut")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")  + 
+    theme_bw() + scale_x_continuous(breaks = 1:33, limits= c(xmin = 1,xmax = 33))
+  
+}
+
+mvhardprestartcut <- function(){
+  vec <- c("mvhard3prestartcut","mvhard2prestartcut","mvhard11prestartcut","mvhard12prestartcut")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 1)
+  plot + ggtitle("Performance between Majority Voting and Soft Penalty")  + 
+    theme_bw() + scale_x_continuous(breaks = 1:33, limits= c(xmin = 1,xmax = 33))
+  
+}
+
+morecut <- function(name){
+  vec <- paste0(name,c("3morecut","2morecut","11morecut","12morecut"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 100)
+  plot + ggtitle(paste("Performance between",getMain(name)))  + 
+    theme_bw() + scale_x_continuous(breaks = 1:9, limits= c(xmin = 1,xmax = 9)) +
+    labs(y = "precision")
+}
+
+add <- function(name){
+  vec <- paste0(name,c("3add","2add","11add","12add"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, oneshot.df)
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 100)
+  plot + ggtitle(paste("Performance between",getMain(name)))  + 
+    theme_bw() + scale_x_continuous(breaks = seq(0,48,2), limits= c(xmin = 1,xmax = 48))
+}
+
+
+add2 <- function(name){
+  vec <- paste0(name,c("3add2","2add2","11add2","12add2"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, oneshot.df)
+  
+  plot <- nlineplot(result,list("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"),"Data.Fusion",ymax = 100)
+  plot + ggtitle(paste("Performance between",getMain(name)))  + 
+    theme_bw() + scale_x_continuous(breaks = seq(0,48,2), limits= c(xmin = 1,xmax = 48))
+}
+
+add.diff <- function(name){
+  vec <- paste0(c("mv","mvsoft","mvhard"),name,"add")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, oneshot.df)
+  
+  plot <- nlineplot(result,list("MV","MV Soft","MV Hard"),"Data.Fusion",ymax = 100)
+  plot + ggtitle(paste("Performance between",name))  + 
+    theme_bw() + scale_x_continuous(breaks = seq(0,48,2), limits= c(xmin = 1,xmax = 48))
+}
+
+
+oneshot.df <- function(file){
+  df <- read.csv(paste("result",file,sep = "/"), skip = 16)
+  df <- df[1:2]
+  df[,1] <- sapply(df[,1], function(x) x + 1)
+  colnames(df)[2] <- "correctness" 
+  
+  df <- aggregate(correctness ~ .,data = df, mean)
+  df 
+}
+
+area <- function(name,rate = 0){
+  vec <- paste0(name,c("3area","2area","11area","12area"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, twovar.df)
+  
+  if(rate > 0){
+    result <<- lapply(result, function(x){ x[x[,2] ==  rate, ] })
+  }
+
+  
+  plot <- nlineplot(result,expand.grid.list(c("Type 3","Type 2", "Type 1 : flood", "Type 1 : Normal"), c("25","50","75"),rate),"Data.Fusion",ymax = 100)
+  plot + ggtitle(paste("Performance between",getMain(name)))  + 
+    theme_bw() + scale_x_continuous(breaks = 1:5, limits= c(xmin = 1,xmax = 5))
+}
+
+arearate1 <- function(name){
+  vec <- c(paste0("mv",name),
+           paste0(c("mvsoft","mvsoft","emhard","emhard","emhard"),name,"cut"))
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("MV","MV Soft","MV Hard","EM","EM Soft","EM Hard"),"Data.Fusion",ymin = 50,ymax = 100)
+  plot + ggtitle(paste("Performance between Data Fusion and Reputation Managament in 25 area \n with Adversaries Type",name))  + 
+    theme_bw() + scale_x_continuous(breaks = seq(0,100,10), limits= c(xmin = 0,xmax = 50))
+}
+
+arearate <- function(name){
+  vec <- paste0(c("mv","mvsoft","mvhard","em","emsoft","emhard"),name,"arearate")
+  param <- paste0(vec,".csv")
+  result <<- lapply(param, onevar.df)
+  
+  plot <- nlineplot(result,list("MV","MV Soft","MV Hard","EM","EM Soft","EM Hard"),"Data.Fusion",ymin = 50,ymax = 100)
+  plot + ggtitle(paste("Performance between Data Fusion and Reputation Managament in 25 area \n with Adversaries Type",name))  + 
+    theme_bw() + scale_x_continuous(breaks = seq(0,100,10), limits= c(xmin = 0,xmax = 50))
+}
+
+expand.grid.list <- function(a,b,rate){
+  df <- expand.grid(a, b)
+  df <- df[df[,2] == rate,]
+  df <- df[order(df[,1]),]
+  
+  as.list(apply(df , 1, paste, collapse="."))
+}
+
+#result2 <- lapply(result, function(x){x[x[1] <= 50,]})
+#sapply(result2,function(x){mean(x[,2] )})

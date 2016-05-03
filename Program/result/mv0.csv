@@ -1,0 +1,17 @@
+BehaviorSpace results (NetLogo 5.2.0),,,,,,,,,,,,,,,
+marcs_kill (1).nlogo,,,,,,,,,,,,,,,
+a1,,,,,,,,,,,,,,,
+04/08/2559 10:41:23:722 +0700,,,,,,,,,,,,,,,
+min-pxcor,max-pxcor,min-pycor,max-pycor,,,,,,,,,,,,
+-20,20,-20,20,,,,,,,,,,,,
+[run number],adversaries-rate,number-workers,workers-probability,adversaries-type,problem-label,area.x,area.y,label-level,data-fusion,reputation-algorithm,use-cut-worker-by-penalty?,cut-workers-per-round,show-penalty?,[step],sum-correctness / floor(ticks / update-ticks)
+4,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+2,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+3,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+5,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+6,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+7,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+8,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+9,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+1,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
+10,0,100,100,"""3. perfect""","""random""",1,1,"""2 Levels""","""Majority Voting""","""None""",false,0,false,1441,100
